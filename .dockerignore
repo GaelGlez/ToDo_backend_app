@@ -1,2 +1,7 @@
-*
-!target/quarkus-app/**
+.git
+.idea
+target
+.env
+*.iml
+
+src/main/resources/*firebase-adminsdk*.json

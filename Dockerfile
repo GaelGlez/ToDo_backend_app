@@ -1,23 +1,28 @@
-####
-# Runtime-only Dockerfile for Quarkus (JVM mode, Java 21 Temurin).
-# Requiere que `./mvnw package` (o Cloud Build) haya generado target/quarkus-app/ antes.
-####
+FROM eclipse-temurin:21-jdk AS build
+
+WORKDIR /workspace
+
+COPY mvnw .
+COPY pom.xml .
+COPY .mvn .mvn
+
+RUN chmod +x mvnw
+RUN ./mvnw -B -DskipTests dependency:go-offline
+
+COPY src src
+
+RUN ./mvnw -B -DskipTests package
+
 
 FROM eclipse-temurin:21-jre
 
-ARG APP_VERSION=dev
-ENV APP_VERSION=${APP_VERSION}
-
 WORKDIR /deployments
 
-COPY target/quarkus-app/lib/      lib/
-COPY target/quarkus-app/*.jar     ./
-COPY target/quarkus-app/app/      app/
-COPY target/quarkus-app/quarkus/  quarkus/
+COPY --from=build /workspace/target/quarkus-app/lib/ ./lib/
+COPY --from=build /workspace/target/quarkus-app/*.jar ./
+COPY --from=build /workspace/target/quarkus-app/app/ ./app/
+COPY --from=build /workspace/target/quarkus-app/quarkus/ ./quarkus/
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", \
-  "-Dquarkus.http.host=0.0.0.0", \
-  "-Djava.util.logging.manager=org.jboss.logmanager.LogManager", \
-  "-jar", "quarkus-run.jar"]
+ENTRYPOINT ["java", "-Dquarkus.http.host=0.0.0.0", "-Djava.util.logging.manager=org.jboss.logmanager.LogManager", "-jar", "quarkus-run.jar"]
